@@ -61,5 +61,70 @@ export function buildZip(images) {
 }
 
 export default async function handler(req, res) {
-  res.status(501).json({ error: 'Not implemented' });
+  // Auth: extract and validate Bearer token
+  const authHeader = req.headers['authorization'] || req.headers['Authorization'] || '';
+  const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+  const token = bearerMatch ? bearerMatch[1].trim() : '';
+  if (!token) {
+    return res.status(401).json({ error: 'Missing authorization token' });
+  }
+  const valid = await validateToken(token);
+  if (!valid) {
+    return res.status(401).json({ error: 'Invalid authorization token' });
+  }
+
+  // Parse body
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return res.status(400).json({ error: 'Invalid JSON body' });
+  }
+
+  const { images = [], format = 'original' } = body;
+  if (!Array.isArray(images) || images.length === 0) {
+    return res.status(400).json({ error: 'No images provided' });
+  }
+
+  // Process images
+  const processed = [];
+  const failed = [];
+
+  for (let i = 0; i < images.length; i++) {
+    const { url, title } = images[i];
+    try {
+      const { buffer: rawBuffer, contentType } = await fetchImage(url);
+      const convertedBuffer = await convertImage(rawBuffer, format);
+      const ext = format === 'original'
+        ? resolveExtension(url, contentType)
+        : (format === 'jpg' ? '.jpg' : `.${format}`);
+      const filename = buildFilename(title, i, ext);
+      processed.push({ buffer: convertedBuffer, filename });
+    } catch (err) {
+      failed.push({ url, title, error: err.message });
+    }
+  }
+
+  if (processed.length === 0) {
+    return res.status(422).json({ error: 'All images failed to process', failed });
+  }
+
+  if (failed.length > 0) {
+    res.setHeader('X-Failed-Count', String(failed.length));
+    res.setHeader('X-Failed-Items', JSON.stringify(failed.map(f => f.title || f.url)));
+  }
+
+  // Single file → return directly; multiple → ZIP
+  if (processed.length === 1) {
+    const { buffer, filename } = processed[0];
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.end(buffer);
+  } else {
+    const zip = await buildZip(processed);
+    const zipName = `images_${Date.now()}.zip`;
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${zipName}"`);
+    res.end(zip);
+  }
 }

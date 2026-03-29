@@ -121,3 +121,94 @@ describe('buildZip', () => {
     expect(result[1]).toBe(0x4b);
   });
 });
+
+// ── Task 6: HTTP handler ──────────────────────────────────────────────────────
+
+function makeReq(body, token) {
+  const headers = {};
+  if (token) headers['authorization'] = `Bearer ${token}`;
+  return {
+    method: 'POST',
+    headers,
+    json: async () => body,
+  };
+}
+
+function makeRes() {
+  return {
+    statusCode: 200,
+    _headers: {},
+    _body: null,
+    _data: null,
+    status(code) { this.statusCode = code; return this; },
+    json(body) { this._body = body; return this; },
+    setHeader(k, v) { this._headers[k] = v; },
+    end(data) { this._data = data; },
+  };
+}
+
+describe('handler', () => {
+  test('returns 401 when Authorization header is missing', async () => {
+    const req = { method: 'POST', headers: {}, json: async () => ({}) };
+    const res = makeRes();
+    await handler(req, res);
+    expect(res.statusCode).toBe(401);
+  });
+
+  test('returns 401 when token is invalid', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false });
+    const res = makeRes();
+    await handler(makeReq({ images: [], format: 'png' }, 'bad'), res);
+    expect(res.statusCode).toBe(401);
+  });
+
+  test('returns 400 when images array is empty', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true });
+    const res = makeRes();
+    await handler(makeReq({ images: [], format: 'png' }, 'tok'), res);
+    expect(res.statusCode).toBe(400);
+  });
+
+  test('returns single file with application/octet-stream for one image', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true }); // validateToken
+    const imgData = Buffer.from('fake-image-data');
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      arrayBuffer: async () => imgData.buffer,
+      headers: { get: () => 'image/png' },
+    });
+    const res = makeRes();
+    await handler(
+      makeReq({ images: [{ url: 'https://cdn.miro.com/a.png', title: 'photo' }], format: 'original' }, 'tok'),
+      res
+    );
+    expect(res._headers['Content-Type']).toBe('application/octet-stream');
+    expect(res._data).toBeInstanceOf(Buffer);
+  });
+
+  test('returns ZIP with application/zip for multiple images', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true }); // validateToken
+    const imgData = Buffer.from('fake');
+    const fakeResponse = {
+      ok: true,
+      arrayBuffer: async () => imgData.buffer,
+      headers: { get: () => 'image/png' },
+    };
+    mockFetch.mockResolvedValueOnce(fakeResponse);
+    mockFetch.mockResolvedValueOnce(fakeResponse);
+    const res = makeRes();
+    await handler(
+      makeReq({
+        images: [
+          { url: 'https://cdn.miro.com/a.png', title: 'photo1' },
+          { url: 'https://cdn.miro.com/b.png', title: 'photo2' },
+        ],
+        format: 'original',
+      }, 'tok'),
+      res
+    );
+    expect(res._headers['Content-Type']).toBe('application/zip');
+    expect(res._data[0]).toBe(0x50); // ZIP magic bytes
+    expect(res._data[1]).toBe(0x4b);
+  });
+});
