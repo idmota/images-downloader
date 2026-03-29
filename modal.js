@@ -9,6 +9,54 @@ function getSessionKey() {
   return new URLSearchParams(window.location.search).get('key');
 }
 
+const COLLAPSED_LIMIT = 3;
+
+function renderFileList(images) {
+  const container = document.getElementById('file-list');
+  if (images.length === 0) return;
+
+  container.style.display = 'block';
+
+  const names = images.map((img, i) => img.title || `image_${i + 1}`);
+  const overflow = names.length > 5;
+  const visible = overflow ? names.slice(0, COLLAPSED_LIMIT) : names;
+
+  function renderItems(list) {
+    container.innerHTML = '';
+    list.forEach(name => {
+      const div = document.createElement('div');
+      div.className = 'file-item';
+      div.title = name;
+      div.textContent = name;
+      container.appendChild(div);
+    });
+  }
+
+  renderItems(visible);
+
+  if (overflow) {
+    const btn = document.createElement('button');
+    btn.className = 'more-btn';
+    let expanded = false;
+
+    function updateBtn() {
+      btn.textContent = expanded
+        ? 'Show less'
+        : `+ ${names.length - COLLAPSED_LIMIT} more`;
+    }
+
+    btn.addEventListener('click', () => {
+      expanded = !expanded;
+      renderItems(expanded ? names : visible);
+      container.appendChild(btn);
+      updateBtn();
+    });
+
+    updateBtn();
+    container.appendChild(btn);
+  }
+}
+
 function restoreSavedFormat() {
   const saved = localStorage.getItem(FORMAT_KEY);
   if (saved) {
@@ -119,6 +167,7 @@ async function main() {
   }
 
   restoreSavedFormat();
+  renderFileList(images);
 
   if (images.length === 0) {
     setButtonsDisabled(true);
