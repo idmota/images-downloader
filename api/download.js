@@ -1,4 +1,6 @@
 import sharp from '@img/sharp-linux-x64';
+import archiver from 'archiver';
+import { PassThrough } from 'stream';
 import { buildFilename, resolveExtension } from '../utils/filename.js';
 
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // 4 MB
@@ -38,8 +40,24 @@ export async function validateToken(token) {
   }
 }
 
-export async function buildZip(_images) {
-  throw new Error('Not implemented');
+export function buildZip(images) {
+  return new Promise((resolve, reject) => {
+    const archive = archiver('zip', { zlib: { level: 6 } });
+    const passthrough = new PassThrough();
+    const chunks = [];
+
+    passthrough.on('data', (chunk) => chunks.push(chunk));
+    passthrough.on('end', () => resolve(Buffer.concat(chunks)));
+    passthrough.on('error', reject);
+    archive.on('error', reject);
+
+    archive.pipe(passthrough);
+
+    for (const { buffer, filename } of images) {
+      archive.append(buffer, { name: filename });
+    }
+    archive.finalize();
+  });
 }
 
 export default async function handler(req, res) {

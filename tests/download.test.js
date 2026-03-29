@@ -100,3 +100,24 @@ describe('convertImage', () => {
     expect(toFormatMock).toHaveBeenCalledWith('jpeg');
   });
 });
+
+// ── Task 5: buildZip ──────────────────────────────────────────────────────────
+
+describe('buildZip', () => {
+  test('resolves with a non-empty Buffer', async () => {
+    const images = [
+      { buffer: Buffer.from('img1'), filename: 'photo_1.png' },
+      { buffer: Buffer.from('img2'), filename: 'photo_2.png' },
+    ];
+    const result = await buildZip(images);
+    expect(result).toBeInstanceOf(Buffer);
+    expect(result.length).toBeGreaterThan(0);
+  });
+
+  test('ZIP starts with PK magic bytes (0x50 0x4B)', async () => {
+    const images = [{ buffer: Buffer.from('hello'), filename: 'test.png' }];
+    const result = await buildZip(images);
+    expect(result[0]).toBe(0x50);
+    expect(result[1]).toBe(0x4b);
+  });
+});
