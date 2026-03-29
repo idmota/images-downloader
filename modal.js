@@ -3,8 +3,23 @@
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+const FORMAT_KEY = 'images_downloader_format';
+
 function getSessionKey() {
   return new URLSearchParams(window.location.search).get('key');
+}
+
+function restoreSavedFormat() {
+  const saved = localStorage.getItem(FORMAT_KEY);
+  if (saved) {
+    const select = document.getElementById('format');
+    if ([...select.options].some(o => o.value === saved)) {
+      select.value = saved;
+    }
+  }
+  document.getElementById('format').addEventListener('change', e => {
+    localStorage.setItem(FORMAT_KEY, e.target.value);
+  });
 }
 
 function sleep(ms) {
@@ -102,6 +117,8 @@ async function main() {
     document.getElementById('skipped').textContent =
       `${skipped} item${skipped !== 1 ? 's' : ''} skipped (not images)`;
   }
+
+  restoreSavedFormat();
 
   if (images.length === 0) {
     setButtonsDisabled(true);
