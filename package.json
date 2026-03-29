@@ -19,6 +19,7 @@
   "jest": {
     "testEnvironment": "node",
     "moduleNameMapper": {
+      "^@img/sharp-linux-x64$": "<rootDir>/__mocks__/sharp.js",
       "^(\\.{1,2}/.*)\\.js$": "$1"
     }
   }
