@@ -1,0 +1,16 @@
+{
+  "functions": {
+    "api/download.js": {
+      "maxDuration": 10
+    }
+  },
+  "headers": [
+    {
+      "source": "/icon.svg",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Content-Type", "value": "image/svg+xml" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "appName": "Images Downloader",
+  "sdkVersion": "SDK_V2",
+  "sdkUri": "https://miro-images-downloader-7pqf3doft-tomconmaks-5481s-projects.vercel.app",
+  "boardPicker": { "allowedDomains": [] },
+  "redirectUris": [],
+  "redirectUriForSdk": "https://miro-images-downloader-7pqf3doft-tomconmaks-5481s-projects.vercel.app/",
+  "scopes": ["boards:read"],
+  "icons": {
+    "colored": "https://miro-images-downloader-7pqf3doft-tomconmaks-5481s-projects.vercel.app/icon.svg",
+    "outline": ""
+  }
+}
